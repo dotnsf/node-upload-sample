@@ -7,6 +7,8 @@ var express = require( 'express' ),
     app = express(),
     appEnv = cfenv.getAppEnv();
 
+var crypto = require( 'crypto' );
+
 app.use( multer( { dest: './uploads/' } ).single( 'img' ) );
 app.use( express.static( __dirname + '/public' ) );
 
@@ -20,13 +22,23 @@ app.post( '/upload', function( req, res ){
   var path = req.file.path;
   var destination = req.file.destination;
 
-  fs.createReadStream( path )
-    .pipe( fs.createWriteStream( './images/' + originalname ) );
+  //. Name after Hash value
+  var hash = crypto.createHash( 'sha512' );
+  var fstream = fs.createReadStream( path );
+  hash.setEncoding( 'hex' );
+  fstream.on( 'end', function(){
+    hash.end();
+    var result = hash.read();
 
+    fs.createReadStream( path )
+      .pipe( fs.createWriteStream( './images/' + result + ext ) );
 
-  fs.unlink( path, function( err ){} );
+    fs.unlink( path, function( err ){} );
 
-  res.redirect( './' );
+    res.redirect( './' );
+  });
+
+  fstream.pipe( hash );
 });
 
 app.listen( appEnv.port );
